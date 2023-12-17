@@ -2,6 +2,12 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "com.github"
 ThisBuild / organizationName := "plavreshin"
 
+val KantanVersion = "0.7.0"
+val PekkoVersion = "1.0.2"
+val PekkoHttpVersion = "1.0.0"
+val PekkoJsonVersion = "1.0.0"
+val CirceVersion = "0.14.6"
+
 lazy val root = (project in file("."))
   .settings(
     name := "stream-csv-sources-pekko-task",
@@ -19,27 +25,35 @@ lazy val root = (project in file("."))
         "-Wdead-code",
         "-Werror",
         "-Wnumeric-widen",
-        "-Wunused:implicits",
-        "-Wunused:imports",
-        "-Wunused:linted",
-        "-Wunused:locals",
-        "-Wunused:params",
-        "-Wunused:patvars",
-        "-Wunused:privates",
+//        "-Wunused:implicits",
+//        "-Wunused:imports",
+//        "-Wunused:linted",
+//        "-Wunused:locals",
+//        "-Wunused:params",
+//        "-Wunused:patvars",
+//        "-Wunused:privates",
         "-Wvalue-discard",
         "-Xcheckinit",
         "-Xlint",
         "-Xsource:3"
       ),
     libraryDependencies ++= Seq(
-      "org.apache.pekko" %% "pekko-stream" % "1.0.2",
-      "org.apache.pekko" %% "pekko-actor" % "1.0.2",
-      "org.mdedetrich" %% "pekko-stream-json" % "1.0.0",
-      "org.mdedetrich" %% "pekko-http-json" % "1.0.0",
-      "com.nrinaudo" %% "kantan.csv" % "0.7.0",
-      "com.nrinaudo" %% "kantan.csv-generic" % "0.7.0",
-      "com.nrinaudo" %% "kantan.csv-java8" % "0.7.0",
-      "org.scalameta" %% "munit" % "0.7.29"
+      "org.apache.pekko" %% "pekko-stream" % PekkoVersion,
+      "org.apache.pekko" %% "pekko-stream-testkit" % PekkoVersion % Test,
+      "org.apache.pekko" %% "pekko-http" % PekkoHttpVersion,
+      "org.apache.pekko" %% "pekko-http-testkit" % PekkoHttpVersion % Test,
+      "org.apache.pekko" %% "pekko-actor" % PekkoVersion,
+      "org.mdedetrich" %% "pekko-stream-json" % PekkoJsonVersion,
+      "org.mdedetrich" %% "pekko-http-json" % PekkoJsonVersion,
+      "org.mdedetrich" %% "pekko-http-circe" % PekkoJsonVersion,
+      "org.mdedetrich" %% "pekko-stream-circe" % PekkoJsonVersion,
+      "com.nrinaudo" %% "kantan.csv" % KantanVersion,
+      "com.nrinaudo" %% "kantan.csv-generic" % KantanVersion,
+      "com.nrinaudo" %% "kantan.csv-java8" % KantanVersion,
+      "org.typelevel" %% "cats-core" % "2.10.0",
+      "io.circe" %% "circe-core" % CirceVersion,
+      "io.circe" %% "circe-generic" % CirceVersion,
+      "org.scalatest" %% "scalatest" % "3.2.17" % Test
     )
   )
 

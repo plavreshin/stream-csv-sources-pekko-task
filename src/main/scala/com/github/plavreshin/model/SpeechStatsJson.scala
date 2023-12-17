@@ -1,5 +1,5 @@
 package com.github.plavreshin.model
 
-class SpeechStatsJson {
-
-}
+case class SpeechStatsJson(mostSpeeches: Option[String],
+                           mostSecurity: Option[String],
+                           leastWordy: Option[String])
