@@ -2,6 +2,7 @@ package com.github.plavreshin.service.csv
 
 import cats.syntax.all.*
 import com.github.plavreshin.domain.SpeechItem
+import kantan.csv.java8.*
 import kantan.csv.ops.*
 import kantan.csv.{CsvConfiguration, RowDecoder, rfc}
 import org.apache.pekko.NotUsed

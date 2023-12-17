@@ -1,5 +1,10 @@
 package com.github.plavreshin.domain
 
-class CsvFileError {
+sealed trait CsvFileError
+
+object CsvFileError {
+
+  case object MissingValidHeader extends CsvFileError
+  case object InvalidCsv extends CsvFileError
 
 }

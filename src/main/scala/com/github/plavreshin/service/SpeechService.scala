@@ -1,33 +1,52 @@
 package com.github.plavreshin.service
 
-import com.github.plavreshin.domain.{SpeechItem, SpeechStats}
+import cats.syntax.all.*
+import com.github.plavreshin.domain.CsvFileError.InvalidCsv
+import com.github.plavreshin.domain.{CsvFileError, SpeechItem, SpeechStats}
 import com.github.plavreshin.service.csv.CsvParser
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.pekko.NotUsed
 import org.apache.pekko.stream.scaladsl.{Framing, Merge, Source, StreamConverters}
 import org.apache.pekko.util.ByteString
 
 import java.net.URL
+import scala.util.control.NonFatal
 
 trait SpeechService {
 
-  def evaluate(urls: Seq[String]): Source[SpeechStats, NotUsed]
+  def evaluate(urls: Seq[String]): Source[Either[CsvFileError, SpeechStats], NotUsed]
 
 }
 
-class SpeechServiceImpl extends SpeechService {
+class SpeechServiceImpl extends SpeechService with LazyLogging {
 
-  override def evaluate(urls: Seq[String]): Source[SpeechStats, NotUsed] = {
-    val sources: Seq[Source[Either[String, SpeechItem], NotUsed]] = urls.map { url =>
+  override def evaluate(urls: Seq[String]): Source[Either[CsvFileError, SpeechStats], NotUsed] =
+    mergeSources(parseAndCollectSpeeches(urls.distinct))
+      .fold(SpeechStats.Empty)(evaluateSpeechItems)
+      .flatMapConcat(Source.single)
+      .map(_.asRight[CsvFileError])
+      .recover { case NonFatal(ex) =>
+        logger.error("Error while evaluating speeches", ex)
+        InvalidCsv.asLeft[SpeechStats]
+      }
+
+  private def parseAndCollectSpeeches(urls: Seq[String]): Seq[Source[Either[String, SpeechItem], NotUsed]] =
+    urls.map { url =>
       StreamConverters.fromInputStream(() => new URL(url).openStream())
         .via(Framing.delimiter(ByteString("\n"), maximumFrameLength = 1024, allowTruncation = true))
         .map(_.utf8String.split(","))
         .mapMaterializedValue[NotUsed](_ => NotUsed)
+        .prefixAndTail(1).flatMapConcat { case (header, rows) =>
+          header.headOption.fold(Source.empty[Array[String]]) { _ => rows }
+        }
         .via(CsvParser.decodeCsvFlow)
     }
-    mergeSources(sources)
-      .wireTap(x => println(x.map(_.speaker).getOrElse("")))
-    Source.empty
-  }
+
+  private def evaluateSpeechItems(state: SpeechStats, row: Either[String, SpeechItem]): SpeechStats =
+    row.fold(
+      _ => state,
+      speechItem => state.update(speechItem)
+    )
 
   private def mergeSources[T](sources: Seq[Source[T, NotUsed]]): Source[T, NotUsed] =
     sources.size match {

@@ -2,6 +2,7 @@ package com.github.plavreshin.web
 
 import com.github.plavreshin.model.SpeechStatsJson
 import com.github.plavreshin.service.SpeechService
+import io.scalaland.chimney.dsl.*
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.StatusCodes
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -33,7 +34,22 @@ class Resource(speechService: SpeechService)
           validationErr => complete(StatusCodes.UnprocessableEntity, s"Provided URLs must be either http or https, actual err: $validationErr"),
           stream => {
             onComplete(stream.runWith(Sink.head)) { result =>
-              complete(SpeechStatsJson(None, None, None))
+              result.fold(
+                err => complete(StatusCodes.InternalServerError, s"Error occurred during evaluation: $err"),
+                speechStats =>
+                  speechStats.fold(
+                    err => complete(StatusCodes.InternalServerError, s"Failed to process csv sources: $err"),
+                    stats =>
+                      complete(
+                        stats
+                          .into[SpeechStatsJson]
+                          .withFieldComputed(_.mostSpeeches, _.mostSpeeches)
+                          .withFieldComputed(_.mostSecurity, _.mostSecurity)
+                          .withFieldComputed(_.leastWordy, _.leastWordy)
+                          .transform
+                      )
+                  )
+              )
             }
           })
     }
@@ -48,7 +64,7 @@ object Resource {
       Either.cond(urls.nonEmpty, (), "URLs are empty")
 
     def validateValidUrls(urls: Iterable[String]): Either[String, Unit] =
-      Either.cond(urls.forall(url => url.startsWith("http") || url.startsWith("https") || url.startsWith("file")), (), "URL is not valid")
+      Either.cond(urls.forall(url => url.startsWith("http") || url.startsWith("https")), (), "URL is not valid")
 
   }
 
