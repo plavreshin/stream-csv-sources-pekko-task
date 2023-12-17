@@ -1,0 +1,16 @@
+name: ci
+on: push
+jobs:
+  sbt-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - uses: olafurpg/setup-scala@v11
+        with:
+          java-version: adopt@1.17
+      - uses: actions/checkout@v3
+      - uses: coursier/cache-action@v6
+      - name: build and test
+        run: sbt +test

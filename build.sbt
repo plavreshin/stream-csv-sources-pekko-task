@@ -51,6 +51,7 @@ lazy val root = (project in file("."))
       "com.nrinaudo" %% "kantan.csv-generic" % KantanVersion,
       "com.nrinaudo" %% "kantan.csv-java8" % KantanVersion,
       "org.typelevel" %% "cats-core" % "2.10.0",
+      "io.scalaland" %% "chimney" % "0.8.3",
       "io.circe" %% "circe-core" % CirceVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
       "org.scalatest" %% "scalatest" % "3.2.17" % Test
