@@ -57,7 +57,3 @@ class SpeechServiceImpl(implicit actorSystem: ActorSystem) extends SpeechService
     }
 
 }
-
-object SpeechService {
-
-}
