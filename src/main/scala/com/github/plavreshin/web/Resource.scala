@@ -3,15 +3,12 @@ package com.github.plavreshin.web
 import com.github.plavreshin.model.SpeechStatsJson
 import com.github.plavreshin.service.SpeechService
 import io.scalaland.chimney.dsl.*
-import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.StatusCodes
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
-import org.apache.pekko.stream.scaladsl.Sink
 import org.mdedetrich.pekko.http.support.CirceHttpSupport
 
-class Resource(speechService: SpeechService)
-              (implicit val actorSystem: ActorSystem) extends CirceHttpSupport {
+class Resource(speechService: SpeechService) extends CirceHttpSupport {
 
   import JsonCodecs.*
   import Resource.*
@@ -32,8 +29,8 @@ class Resource(speechService: SpeechService)
       } yield speechService.evaluate(urls.toSeq))
         .fold(
           validationErr => complete(StatusCodes.UnprocessableEntity, s"Provided URLs must be either http or https, actual err: $validationErr"),
-          stream => {
-            onComplete(stream.runWith(Sink.head)) { result =>
+          evaluationResult => {
+            onComplete(evaluationResult) { result =>
               result.fold(
                 err => complete(StatusCodes.InternalServerError, s"Error occurred during evaluation: $err"),
                 speechStats =>

@@ -6,21 +6,23 @@ import com.github.plavreshin.domain.{CsvFileError, SpeechItem, SpeechStats}
 import com.github.plavreshin.service.csv.CsvParser
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.pekko.NotUsed
-import org.apache.pekko.stream.scaladsl.{Framing, Merge, Source, StreamConverters}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.scaladsl.{Framing, Merge, Sink, Source, StreamConverters}
 import org.apache.pekko.util.ByteString
 
 import java.net.URL
+import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 trait SpeechService {
 
-  def evaluate(urls: Seq[String]): Source[Either[CsvFileError, SpeechStats], NotUsed]
+  def evaluate(urls: Seq[String]): Future[Either[CsvFileError, SpeechStats]]
 
 }
 
-class SpeechServiceImpl extends SpeechService with LazyLogging {
+class SpeechServiceImpl(implicit actorSystem: ActorSystem) extends SpeechService with LazyLogging {
 
-  override def evaluate(urls: Seq[String]): Source[Either[CsvFileError, SpeechStats], NotUsed] =
+  override def evaluate(urls: Seq[String]): Future[Either[CsvFileError, SpeechStats]] =
     mergeSources(parseAndCollectSpeeches(urls.distinct))
       .fold(SpeechStats.Empty)(evaluateSpeechItems)
       .flatMapConcat(Source.single)
@@ -29,6 +31,7 @@ class SpeechServiceImpl extends SpeechService with LazyLogging {
         logger.error("Error while evaluating speeches", ex)
         InvalidCsv.asLeft[SpeechStats]
       }
+      .runWith(Sink.head)
 
   private def parseAndCollectSpeeches(urls: Seq[String]): Seq[Source[Either[String, SpeechItem], NotUsed]] =
     urls.map { url =>
@@ -43,10 +46,7 @@ class SpeechServiceImpl extends SpeechService with LazyLogging {
     }
 
   private def evaluateSpeechItems(state: SpeechStats, row: Either[String, SpeechItem]): SpeechStats =
-    row.fold(
-      _ => state,
-      speechItem => state.update(speechItem)
-    )
+    row.fold(_ => state, state.update)
 
   private def mergeSources[T](sources: Seq[Source[T, NotUsed]]): Source[T, NotUsed] =
     sources.size match {
