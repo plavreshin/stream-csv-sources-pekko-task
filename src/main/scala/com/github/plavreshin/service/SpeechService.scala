@@ -24,7 +24,7 @@ class SpeechServiceImpl(implicit actorSystem: ActorSystem) extends SpeechService
 
   override def evaluate(urls: Seq[String]): Future[Either[CsvFileError, SpeechStats]] =
     mergeSources(urls.distinct.map(parseAndCollectSpeeches))
-      .fold(SpeechStats.Empty)(evaluateSpeechItems)
+      .fold(SpeechStats.Empty) { case (state, row) => row.fold(_ => state, state.update) }
       .flatMapConcat(Source.single)
       .map(_.asRight[CsvFileError])
       .recover { case NonFatal(ex) =>
@@ -43,12 +43,9 @@ class SpeechServiceImpl(implicit actorSystem: ActorSystem) extends SpeechService
       }
       .via(CsvParser.decodeCsvFlow)
 
-  private def evaluateSpeechItems(state: SpeechStats, row: Either[String, SpeechItem]): SpeechStats =
-    row.fold(_ => state, state.update)
-
   private def mergeSources[T](sources: Seq[Source[T, NotUsed]]): Source[T, NotUsed] =
     sources match {
-      case Nil => Source.empty[T]
+      case Seq() => Source.empty[T]
       case Seq(a) => a
       case Seq(a, b) => a.merge(b)
       case _ => Source.combine(sources.head, sources(1), sources.drop(2) *)(Merge(_))
