@@ -26,7 +26,7 @@ class Resource(speechService: SpeechService) extends CirceHttpSupport {
       (for {
         _ <- validateNonEmpty(urls)
         _ <- validateValidUrls(urls)
-      } yield speechService.evaluate(urls.toSeq))
+      } yield speechService.gatherSpeechStats(urls.toSeq))
         .fold(
           validationErr => complete(StatusCodes.UnprocessableEntity, s"Provided URLs must be either http or https, actual err: $validationErr"),
           evaluationResult => {

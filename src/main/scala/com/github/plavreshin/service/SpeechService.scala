@@ -1,8 +1,8 @@
 package com.github.plavreshin.service
 
 import cats.syntax.all.*
-import com.github.plavreshin.domain.CsvFileError.InvalidCsv
-import com.github.plavreshin.domain.{CsvFileError, SpeechItem, SpeechStats}
+import com.github.plavreshin.domain.StatsGatheringError.InvalidCsv
+import com.github.plavreshin.domain.{StatsGatheringError, SpeechItem, SpeechStats}
 import com.github.plavreshin.service.csv.CsvParser
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.pekko.NotUsed
@@ -16,17 +16,17 @@ import scala.util.control.NonFatal
 
 trait SpeechService {
 
-  def evaluate(urls: Seq[String]): Future[Either[CsvFileError, SpeechStats]]
+  def gatherSpeechStats(urls: Seq[String]): Future[Either[StatsGatheringError, SpeechStats]]
 
 }
 
 class SpeechServiceImpl(implicit actorSystem: ActorSystem) extends SpeechService with LazyLogging {
 
-  override def evaluate(urls: Seq[String]): Future[Either[CsvFileError, SpeechStats]] =
+  override def gatherSpeechStats(urls: Seq[String]): Future[Either[StatsGatheringError, SpeechStats]] =
     mergeSources(urls.distinct.map(parseAndCollectSpeeches))
       .fold(SpeechStats.Empty) { case (state, row) => row.fold(_ => state, state.update) }
       .flatMapConcat(Source.single)
-      .map(_.asRight[CsvFileError])
+      .map(_.asRight[StatsGatheringError])
       .recover { case NonFatal(ex) =>
         logger.error("Error while evaluating speeches", ex)
         InvalidCsv.asLeft[SpeechStats]
