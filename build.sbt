@@ -9,6 +9,7 @@ val PekkoJsonVersion = "1.0.0"
 val CirceVersion = "0.14.6"
 
 lazy val root = (project in file("."))
+  .enablePlugins(JavaAppPackaging)
   .settings(
     name := "stream-csv-sources-pekko-task",
     scalaVersion := "2.13.12",

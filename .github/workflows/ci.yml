@@ -9,7 +9,7 @@ jobs:
           fetch-depth: 1
       - uses: olafurpg/setup-scala@v11
         with:
-          java-version: adopt@1.17
+          java-version: zulu@1.17.0-0
       - uses: actions/checkout@v3
       - uses: coursier/cache-action@v6
       - name: build and test

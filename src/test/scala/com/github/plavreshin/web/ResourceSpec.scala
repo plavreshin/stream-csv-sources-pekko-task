@@ -45,7 +45,6 @@ class ResourceSpec extends AnyWordSpec with Matchers with ScalatestRouteTest wit
           """{"mostSpeeches":null,"mostSecurity":null,"leastWordy":null}"""
       }
     }
-
   }
 
   private object TestScope {
