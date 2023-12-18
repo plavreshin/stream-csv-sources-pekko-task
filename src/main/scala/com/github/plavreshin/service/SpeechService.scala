@@ -23,7 +23,7 @@ trait SpeechService {
 class SpeechServiceImpl(implicit actorSystem: ActorSystem) extends SpeechService with LazyLogging {
 
   override def evaluate(urls: Seq[String]): Future[Either[CsvFileError, SpeechStats]] =
-    mergeSources(parseAndCollectSpeeches(urls.distinct))
+    mergeSources(urls.distinct.map(parseAndCollectSpeeches))
       .fold(SpeechStats.Empty)(evaluateSpeechItems)
       .flatMapConcat(Source.single)
       .map(_.asRight[CsvFileError])
@@ -33,26 +33,24 @@ class SpeechServiceImpl(implicit actorSystem: ActorSystem) extends SpeechService
       }
       .runWith(Sink.head)
 
-  private def parseAndCollectSpeeches(urls: Seq[String]): Seq[Source[Either[String, SpeechItem], NotUsed]] =
-    urls.map { url =>
-      StreamConverters.fromInputStream(() => new URL(url).openStream())
-        .via(Framing.delimiter(ByteString("\n"), maximumFrameLength = 1024, allowTruncation = true))
-        .map(_.utf8String.split(","))
-        .mapMaterializedValue[NotUsed](_ => NotUsed)
-        .prefixAndTail(1).flatMapConcat { case (header, rows) =>
-          header.headOption.fold(Source.empty[Array[String]]) { _ => rows }
-        }
-        .via(CsvParser.decodeCsvFlow)
-    }
+  private def parseAndCollectSpeeches(url: String): Source[Either[String, SpeechItem], NotUsed] =
+    StreamConverters.fromInputStream(() => new URL(url).openStream())
+      .via(Framing.delimiter(ByteString("\n"), maximumFrameLength = 1024, allowTruncation = true))
+      .map(_.utf8String.split(","))
+      .mapMaterializedValue[NotUsed](_ => NotUsed)
+      .prefixAndTail(1).flatMapConcat { case (header, rows) =>
+        header.headOption.fold(Source.empty[Array[String]]) { _ => rows }
+      }
+      .via(CsvParser.decodeCsvFlow)
 
   private def evaluateSpeechItems(state: SpeechStats, row: Either[String, SpeechItem]): SpeechStats =
     row.fold(_ => state, state.update)
 
   private def mergeSources[T](sources: Seq[Source[T, NotUsed]]): Source[T, NotUsed] =
-    sources.size match {
-      case length if length < 1 => Source.empty[T]
-      case 1 => sources.head
-      case 2 => sources.head.merge(sources(1))
+    sources match {
+      case Nil => Source.empty[T]
+      case Seq(a) => a
+      case Seq(a, b) => a.merge(b)
       case _ => Source.combine(sources.head, sources(1), sources.drop(2) *)(Merge(_))
     }
 
